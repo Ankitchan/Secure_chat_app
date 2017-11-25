@@ -43,7 +43,7 @@ int OpenConnection(const char *hostname, int port)
 
 SSL_CTX* InitCTX(void)
 {
-	SSL_METHOD *method;
+	const SSL_METHOD *method;
 	SSL_CTX *ctx;
 
 	OpenSSL_add_all_algorithms();
