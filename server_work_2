@@ -164,6 +164,44 @@ void ServResponse(SSL *ssl, char *msg)
 	//close(sd);
 }
 
+
+RSA * createRSAWithFilename(char * filename,int public)
+{
+    FILE * fp = fopen(filename,"rb");
+ 
+    if(fp == NULL)
+    {
+        printf("Unable to open file %s \n",filename);
+        return NULL;    
+    }
+    RSA *rsa= RSA_new() ;
+ 
+    if(public)
+    {
+        rsa = PEM_read_RSA_PUBKEY(fp, &rsa,NULL, NULL);
+    }
+    else
+    {
+        rsa = PEM_read_RSAPrivateKey(fp, &rsa,NULL, NULL);
+    }
+ 
+    return rsa;
+}
+
+int public_encrypt(unsigned char * data,int data_len,unsigned char * key_file_name, unsigned char *encrypted)
+{
+    RSA * rsa = createRSA(key_file_name,1);
+    int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
+    return result;
+}
+
+int private_decrypt(unsigned char * enc_data,int data_len,unsigned char * key_file_name, unsigned char *decrypted)
+{
+    RSA * rsa = createRSA(key_file_name,0);
+    int  result = RSA_private_decrypt(data_len,enc_data,decrypted,rsa,padding);
+    return result;
+}
+
 int main(int argc, char *argv[])
 {
 	int server_fd, new_socket, valread,client_socket[30], max_clients = 30, activity, i,sd, max_sd;
@@ -303,6 +341,17 @@ int main(int argc, char *argv[])
 				else if(valread > 0)
 				{
 					buffer[valread] = '\0';
+					// If the message is encrypted 
+
+					unsigned char  encrypted[4098]={};
+					unsigned char decrypted[4098]={};
+
+					int decrypted_length = private_decrypt(buffer, (int) strlen(buffer), "private.pem", decrypted);
+					if(decrypted_length == -1)
+					{
+					    printLastError("Private decryption failed ");
+					    exit(0);
+					}
 					//send(sd, buffer, strlen(buffer), 0);
 					printf("Received: %s\n", buffer);
 					ServResponse(ssl, buffer);

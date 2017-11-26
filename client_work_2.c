@@ -10,8 +10,11 @@
 #include <arpa/inet.h>
 #include <resolv.h>
 #include <netdb.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/bio.h>
 #include <openssl/evp.h>
 
 #define PORT 8080
@@ -86,78 +89,57 @@ void ShowCerts(SSL* ssl)
 	}
 }
 
-//RSA* generate_key() {
-//    	fflush(stdout);
-//    	RSA *keypair = RSA_generate_key(KEY_LENGTH, PUB_EXP, NULL, NULL);
-//   	return keypair;
-//}
 
+RSA * createRSAWithFilename(char * filename,int public)
+{
+    FILE * fp = fopen(filename,"rb");
+ 
+    if(fp == NULL)
+    {
+        printf("Unable to open file %s \n",filename);
+        return NULL;    
+    }
+    RSA *rsa= RSA_new() ;
+ 
+    if(public)
+    {
+        rsa = PEM_read_RSA_PUBKEY(fp, &rsa,NULL, NULL);
+    }
+    else
+    {
+        rsa = PEM_read_RSAPrivateKey(fp, &rsa,NULL, NULL);
+    }
+ 
+    return rsa;
+}
 
+int public_encrypt(unsigned char * data,int data_len,unsigned char * key_file_name, unsigned char *encrypted)
+{
+    RSA * rsa = createRSA(key_file_name,1);
+    int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
+    return result;
+}
 
-//void generate_cstring_pem(BIO *pri, BIO* pub; char* pri_key, char* pub_key) {
-//	pri = BIO_new(BIO_s_mem());
-//    	pub = BIO_new(BIO_s_mem());
-	
-//	PEM_write_bio_RSAPrivateKey(pri, keypair, NULL, NULL, 0, NULL, NULL);
-//	PEM_write_bio_RSAPublicKey(pub, keypair);
+int private_decrypt(unsigned char * enc_data,int data_len,unsigned char * key_file_name, unsigned char *decrypted)
+{
+    RSA * rsa = createRSA(key_file_name,0);
+    int  result = RSA_private_decrypt(data_len,enc_data,decrypted,rsa,padding);
+    return result;
+}
 
-//	pri_len = BIO_pending(pri);
-//	pub_len = BIO_pending(pub);
+void printLastError(char *msg)
+{
+    char * err = malloc(130);;
+    ERR_load_crypto_strings();
+    ERR_error_string(ERR_get_error(), err);
+    printf("%s ERROR: %s\n",msg, err);
+    free(err);
+}
 
-//	pri_key = malloc(pri_len + 1);
-//	pub_key = malloc(pub_len + 1);
-
-//	BIO_read(pri, pri_key, pri_len);
-//	BIO_read(pub, pub_key, pub_len);
-
-//	pri_key[pri_len] = '\0';
-//	pub_key[pub_len] = '\0';
-
-//}
-
-
-//int rsa_encrpyt(char* encrypted) {
-//    encrypted = malloc(RSA_size(keypair));
-//    int encrypt_len;
-//    err = malloc(130);
-//    if((encrypt_len = RSA_public_encrypt(strlen(msg)+1, (unsigned char*)msg, (unsigned char*)encrypt,
-//                                         keypair, RSA_PKCS1_OAEP_PADDING)) == -1) {
-//        ERR_load_crypto_strings();
-//        ERR_error_string(ERR_get_error(), err);
-//        fprintf(stderr, "Error encrypting message: %s\n", err);
-//        goto free_stuff;
-//    }
-
-//    return encrypt_len
-//}
-
-
-//void deallocate() {
-//	RSA_free(keypair);
-//	BIO_free_all(pub);
-  //  	BIO_free_all(pri);
-//    	free(pri_key);
-//    	free(pub_key);
-//    	free(encrypt);
-//    	free(decrypt);
-//    	free(err);
-
-//}
 
 int main(int argc, char *argv[])
 {
-	//BIO *pri;
-	//BIO *pub;
-	//size_t pri_len;            // Length of private key
-    	//size_t pub_len;            // Length of public key
-    	//char   *pri_key;           // Private key
-    	//char   *pub_key;           // Public key
-    	//char   msg[KEY_LENGTH/8];  // Message to encrypt
-    	//char   *encrypt = NULL;    // Encrypted message
-    	//char   *decrypt = NULL;    // Decrypted message
-    	//char   *err;               // Buffer for any error messages
-
-	//RSA *keypair = generate_key()
+	
 
 
 	/*struct sockaddr_in addr;
@@ -221,6 +203,9 @@ int main(int argc, char *argv[])
 		ERR_print_errors_fp(stderr);
 	else
 	{
+		
+	
+	
 		bytes = SSL_read(ssl, buffer, sizeof(buffer));
 		buffer[bytes] = '\0'; 
 		printf("Received: %s\n", buffer);
@@ -228,13 +213,21 @@ int main(int argc, char *argv[])
 		char msg[1024];
 		printf("Enter message to send(not more than 1024 char)\n");
 		scanf("%s",msg);
+		// If we want to encrpyt
 
-		//if(// want encryption ) {
-		//	int i = 0;
-		//	for(i = 0; i < msg.size 
-		//}
+		unsigned char  encrypted[4098]={};
+		unsigned char decrypted[4098]={};
 		
-		printf("\n\n Connected with %s encryption\n", SSL_get_cipher(ssl));
+		int encrypted_length= public_encrypt(msg,strlen(msg),"public.pem",encrypted);
+		if(encrypted_length == -1)
+		{
+		    printLastError("Public Encrypt failed ");
+		    exit(0);
+		}
+
+		// encryption finished
+		// now we have the ciphertext in encrypted
+
 		ShowCerts(ssl);
 		
 		SSL_write(ssl, msg, strlen(msg));
