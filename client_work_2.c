@@ -235,6 +235,15 @@ int main(int argc, char *argv[])
 		
 		bytes = SSL_read(ssl, buffer, sizeof(buffer));
 		buffer[bytes] = '\0'; 
+
+		int decrypted_length = private_decrypt(buffer, (int) strlen(buffer), "private.pem", decrypted);
+		if(decrypted_length == -1)
+		{
+		    printLastError("Private decryption failed ");
+		    exit(0);
+		}
+
+
 		printf("Received: %s\n", buffer);
 		
 		SSL_free(ssl);
