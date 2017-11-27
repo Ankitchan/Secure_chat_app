@@ -352,9 +352,19 @@ int main(int argc, char *argv[])
 					    printLastError("Private decryption failed ");
 					    exit(0);
 					}
+
+					int encrypted_length= public_encrypt(decrypted,decrypted_length,publicKey,encrypted); //encrypted contains the re-encrypted message
+					if(encrypted_length == -1)
+					{
+					    printLastError("Public Encrypt failed ");
+					    exit(0);
+					}
 					//send(sd, buffer, strlen(buffer), 0);
 					printf("Received: %s\n", buffer);
+
 					ServResponse(ssl, buffer);
+
+					//ServResponse(ssl, encrypted);			sends encrypted message
 				}
 			}
 		}
