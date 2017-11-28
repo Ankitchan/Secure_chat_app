@@ -211,9 +211,9 @@ int main(int argc, char *argv[])
 		printf("Received: %s\n", buffer);
 
 		char msg[1024];
-		printf("Enter message to send(not more than 1024 char)\n");
+		printf("Enter message to send(not more than 214 char)\n");
 		scanf("%s",msg);
-		// If we want to encrpyt
+		// start encryption
 
 		unsigned char  encrypted[4098]={};
 		unsigned char decrypted[4098]={};
@@ -228,10 +228,21 @@ int main(int argc, char *argv[])
 		// encryption finished
 		// now we have the ciphertext in encrypted
 
-		ShowCerts(ssl);
+		printf("Would you like to receive the ciphertext? (Y/N)\n");
+		scanf("%s", resp1);
+		if(resp1 == "Y" || resp1 == "y") {
+			printf("%s\n", encrypted);
+		}
+
+		printf("Would you like to send message to the server? (Y/N)\n");
+		scanf("%s", resp2);
+
+		if(resp2 == "Y" || resp2 == "y") {
+			ShowCerts(ssl);
+			SSL_write(ssl, msg, strlen(encrypted));
+			printf("Sent %s\n", encrypted);
+		}
 		
-		SSL_write(ssl, msg, strlen(msg));
-		printf("Sent %s\n", msg);
 		
 		bytes = SSL_read(ssl, buffer, sizeof(buffer));
 		buffer[bytes] = '\0'; 

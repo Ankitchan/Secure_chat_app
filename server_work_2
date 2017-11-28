@@ -17,6 +17,8 @@
 #define PORT 8888
 #define FAIL -1
 
+int padding = RSA_PKCS1_PADDING;
+
 int OpenListener(int port)
 {
 	int sd;
@@ -190,14 +192,14 @@ RSA * createRSAWithFilename(char * filename,int public)
 
 int public_encrypt(unsigned char * data,int data_len,unsigned char * key_file_name, unsigned char *encrypted)
 {
-    RSA * rsa = createRSA(key_file_name,1);
+    RSA * rsa = createRSAWithFilename(key_file_name,1);
     int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
     return result;
 }
 
 int private_decrypt(unsigned char * enc_data,int data_len,unsigned char * key_file_name, unsigned char *decrypted)
 {
-    RSA * rsa = createRSA(key_file_name,0);
+    RSA * rsa = createRSAWithFilename(key_file_name,0);
     int  result = RSA_private_decrypt(data_len,enc_data,decrypted,rsa,padding);
     return result;
 }
@@ -349,14 +351,14 @@ int main(int argc, char *argv[])
 					int decrypted_length = private_decrypt(buffer, (int) strlen(buffer), "private.pem", decrypted);
 					if(decrypted_length == -1)
 					{
-					    printLastError("Private decryption failed ");
+					    printf("Private decryption failed ");
 					    exit(0);
 					}
 
-					int encrypted_length= public_encrypt(decrypted,decrypted_length,publicKey,encrypted); //encrypted contains the re-encrypted message
+					int encrypted_length= public_encrypt(decrypted,decrypted_length,"public.pem",encrypted); //encrypted contains the re-encrypted message
 					if(encrypted_length == -1)
 					{
-					    printLastError("Public Encrypt failed ");
+					    printf("Public Encrypt failed ");
 					    exit(0);
 					}
 					//send(sd, buffer, strlen(buffer), 0);
