@@ -145,6 +145,7 @@ void ServResponse(SSL *ssl, char *msg)
 		// else
 		if((valwrite = SSL_write(ssl, msg, strlen(msg))) > 0)
 		{
+			printf("Sent %s\n", msg);
 			puts("message sent successfully");	
 		}
 		else if(valwrite == 0)
@@ -167,7 +168,7 @@ void ServResponse(SSL *ssl, char *msg)
 }
 
 
-RSA * createRSAWithFilename(char * filename,int public)
+RSA * createRSAWithFilename( char * filename,int public)
 {
     FILE * fp = fopen(filename,"rb");
  
@@ -190,14 +191,14 @@ RSA * createRSAWithFilename(char * filename,int public)
     return rsa;
 }
 
-int public_encrypt(unsigned char * data,int data_len,unsigned char * key_file_name, unsigned char *encrypted)
+int public_encrypt(unsigned char * data,int data_len, char * key_file_name, unsigned char *encrypted)
 {
     RSA * rsa = createRSAWithFilename(key_file_name,1);
     int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
     return result;
 }
 
-int private_decrypt(unsigned char * enc_data,int data_len,unsigned char * key_file_name, unsigned char *decrypted)
+int private_decrypt(unsigned char * enc_data,int data_len, char * key_file_name, unsigned char *decrypted)
 {
     RSA * rsa = createRSAWithFilename(key_file_name,0);
     int  result = RSA_private_decrypt(data_len,enc_data,decrypted,rsa,padding);
@@ -206,13 +207,12 @@ int private_decrypt(unsigned char * enc_data,int data_len,unsigned char * key_fi
 
 int main(int argc, char *argv[])
 {
-	int server_fd, new_socket, valread,client_socket[30], max_clients = 30, activity, i,sd, max_sd;
-	struct sockaddr_in addr;
+	int server_fd, valread;
+	
 	//int opt = 1;
-	int addrlen = sizeof(addr);
+	
 	char *buffer = "";
 
-	char *msg = "Server running...";
 
 	fd_set readfds;
 
@@ -229,10 +229,6 @@ int main(int argc, char *argv[])
 	{
 		printf("Usage %s <portnum>\n",  argv[0]);
 	}
-	for(i=0;i<max_clients;i++)
-	{
-		client_socket[i] = 0;
-	}
 
 	SSL_library_init();
 
@@ -240,140 +236,73 @@ int main(int argc, char *argv[])
 	ctx = InitServerCTX();
 	LoadCertificates(ctx, "mycert.pem", "mycert.pem");
 	server_fd = OpenListener(atoi(portnum));
-	// if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-	// {
-	// 	perror("socket failed");
-	// 	exit(EXIT_FAILURE);
-	// }
-
-	// if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR,(char *) &opt, sizeof(opt)) < 0)
-	// {
-	// 	perror("set socket opt failed");
-	// 	exit(EXIT_FAILURE);
-	// }
-
-	// addr.sin_family = AF_INET;
-	// addr.sin_addr.s_addr = INADDR_ANY;
-	// addr.sin_port = htons(PORT);
-
-	// if(bind(server_fd, (struct sockaddr *) &addr, sizeof(addr))<0)
-	// {
-	// 	perror("bind failed");
-	// 	exit(EXIT_FAILURE);
-	// }
-
-	// if(listen(server_fd, 3) < 0)
-	// {
-	// 	perror("listen failed");
-	// 	exit(EXIT_FAILURE);
-	// }
+	printf("A server_fd: %d\n", server_fd);
 
 	printf("\n Waiting for connections....\n");
 
 	while(1)
 	{
+		printf("Sayonara");
+		struct sockaddr_in addr;
+		int addrlen = sizeof(addr);
 		SSL *ssl;
 		FD_ZERO(&readfds);
 
 		FD_SET(server_fd, &readfds);
-		max_sd = server_fd;
 
-		for( i=0; i < max_clients; i++)
+
+		printf("HEllo");
+		int new_socket = accept(server_fd, (struct sockaddr *)&addr,(socklen_t *)&addrlen);
+		printf("Bye");
+		ssl = SSL_new(ctx);
+
+		SSL_set_fd(ssl, new_socket);
+
+
+		if((valread = SSL_read(ssl, buffer, strlen(buffer))) == 0)
 		{
-			sd = client_socket[i];
+			printf("Z\n");
+			getpeername(new_socket, (struct sockaddr*)&addr, (socklen_t *)&addrlen);
+			printf("Host disconnected, ip %s, port %d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
-			if(sd > 0)
-				FD_SET(sd, &readfds);
-
-			if(sd > max_sd)
-				max_sd = sd;
+			close(new_socket);
 		}
 
-		activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-
-		if((activity < 0) && (errno != EINTR))
+		else if(valread > 0)
 		{
-			printf("select error");
-		}
+			printf("A\n");
+			buffer[valread] = '\0';
+			// If the message is encrypted 
 
-		if(FD_ISSET(server_fd, &readfds))
-		{
-			if((new_socket = accept(server_fd, (struct sockaddr *)&addr,(socklen_t *)&addrlen)) < 0)
+			unsigned char  encrypted[4098]={};
+			unsigned char decrypted[4098]={};
+			printf("B\n");
+			int decrypted_length = private_decrypt((unsigned char *) buffer, (int) strlen(buffer),  "private.pem", decrypted);
+			if(decrypted_length == -1)
 			{
-				perror("accept error");
-				exit(EXIT_FAILURE);
-			}		
-
-			printf("New Connection. socket fd is %d , ip is : %s , port : %d\n", new_socket,  inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-			ssl = SSL_new(ctx);
-			SSL_set_fd(ssl, new_socket);
-			ServResponse(ssl, msg);
-			//if( send(new_socket, msg , strlen(msg), 0) != strlen(msg))
-
-
-			
-
-			for( i=0; i<max_clients;i++)
-			{
-				if(client_socket[i] == 0)
-				{
-					client_socket[i] = new_socket;
-					printf("Adding to list of sockets as %d\n", i);
-				}
+			    printf("Private decryption failed ");
+			    exit(0);
 			}
-		}
-
-		for( i=0; i<max_clients; i++)
-		{
-			sd = client_socket[i];
-			printf("%d\n", sd);
-			if(FD_ISSET(sd, &readfds))
+			printf("C\n");
+			int encrypted_length= public_encrypt(decrypted,decrypted_length, "public.pem",encrypted); //encrypted contains the re-encrypted message
+			if(encrypted_length == -1)
 			{
-
-				if((valread = SSL_read(ssl, buffer, strlen(buffer))) == 0)
-				{
-					getpeername(sd, (struct sockaddr*)&addr, (socklen_t *)&addrlen);
-					printf("Host disconnected, ip %s, port %d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-					close(sd);
-					client_socket[i] = 0;
-				}
-
-				else if(valread > 0)
-				{
-					buffer[valread] = '\0';
-					// If the message is encrypted 
-
-					unsigned char  encrypted[4098]={};
-					unsigned char decrypted[4098]={};
-
-					int decrypted_length = private_decrypt(buffer, (int) strlen(buffer), "private.pem", decrypted);
-					if(decrypted_length == -1)
-					{
-					    printf("Private decryption failed ");
-					    exit(0);
-					}
-
-					int encrypted_length= public_encrypt(decrypted,decrypted_length,"public.pem",encrypted); //encrypted contains the re-encrypted message
-					if(encrypted_length == -1)
-					{
-					    printf("Public Encrypt failed ");
-					    exit(0);
-					}
-					//send(sd, buffer, strlen(buffer), 0);
-					printf("Received: %s\n", buffer);
-
-					ServResponse(ssl, buffer);
-
-					//ServResponse(ssl, encrypted);			sends encrypted message
-				}
+			    printf("Public Encrypt failed ");
+			    exit(0);
 			}
+			printf("D\n");
+			//send(sd, encrypted, strlen(encryped), 0);
+			printf("Received: %s\n", buffer);
+
+			ServResponse(ssl, (char *)encrypted);
+			printf("E\n");
+			//ServResponse(ssl, encrypted);			sends encrypted message
 		}
+
+
 		
-		sd = SSL_get_fd(ssl);       /* get socket connection */
-    	SSL_free(ssl);         /* release SSL state */
-    	close(sd);  
+	    	SSL_free(ssl);         /* release SSL state */
+	    	close(new_socket);  
 	}
 
 	close(server_fd);

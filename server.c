@@ -241,6 +241,7 @@ int main(int argc, char *argv[])
 	ctx = InitServerCTX();
 	LoadCertificates(ctx, "mycert.pem", "mycert.pem");
 	server_fd = OpenListener(atoi(portnum));
+	printf("A server_fd: %d\n", server_fd);
 	// if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
 	// {
 	// 	perror("socket failed");
@@ -277,36 +278,42 @@ int main(int argc, char *argv[])
 		FD_ZERO(&readfds);
 
 		FD_SET(server_fd, &readfds);
+		printf("A sd: %d\n", sd);
 		max_sd = server_fd;
 
 		for( i=0; i < max_clients; i++)
 		{
+			printf("B sd: %d\n", sd);
 			sd = client_socket[i];
+			printf("Z sd: %d\n", sd);
 
-			if(sd > 0)
-				FD_SET(sd, &readfds);
+			if(sd > 0) {
+				printf("V: FD_ISSET: %d\n", FD_ISSET(sd, &readfds));
+				FD_SET(sd, &readfds);									// When sd is added to the set
+			}
 
 			if(sd > max_sd)
 				max_sd = sd;
 		}
-
-		activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-
+		printf("<== 			First stop is here\n");
+		activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);				// Server waits here to wait for new connection
+		printf("B  FD_ISSET: %d\n", FD_ISSET(sd, &readfds));
 		if((activity < 0) && (errno != EINTR))
 		{
 			printf("select error\n");
 		}
-		printf("%d\n", server_fd);
 
 		if(FD_ISSET(server_fd, &readfds))
 		{
+			printf("C: FD_ISSET: %d\n", FD_ISSET(sd, &readfds));
 			printf("Bye\n");
 			if((new_socket = accept(server_fd, (struct sockaddr *)&addr,(socklen_t *)&addrlen)) < 0)
 			{
-				printf("Delta");
+				printf("E server_fd: %d\n", server_fd);
 				perror("accept error");
 				exit(EXIT_FAILURE);
-			}		
+			}
+			printf("F server_fd: %d\n", server_fd);		
 
 			printf("New Connection. socket fd is %d , ip is : %s , port : %d\n", new_socket,  inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
@@ -322,7 +329,7 @@ int main(int argc, char *argv[])
 			{
 				if(client_socket[i] == 0)
 				{
-					printf("%d\n", new_socket);
+					printf("new_socket: %d\n", new_socket);				// sd = new_socket
 					client_socket[i] = new_socket;
 					printf("Adding to list of sockets as %d\n", i);
 				}
@@ -330,10 +337,11 @@ int main(int argc, char *argv[])
 		}
 		for( i=0; i<max_clients; i++)
 		{
-			sd = client_socket[i];
-			printf("%d\n", sd);
+			printf("C sd: %d\n", sd);
+			sd = client_socket[i];			// sd gets the value of 4 
+			printf("D sd: %d\n", sd);
 
-			printf("%d\n", FD_ISSET(sd, &readfds));
+			printf("D: FD_ISSET: %d\n", FD_ISSET(sd, &readfds));		// check fails
 			if(FD_ISSET(sd, &readfds) > 0)
 			{
 				printf("X\n");
@@ -349,38 +357,39 @@ int main(int argc, char *argv[])
 
 				else if(valread > 0)
 				{
-					printf("A\n");
+		
 					buffer[valread] = '\0';
 					// If the message is encrypted 
 
 					unsigned char  encrypted[4098]={};
 					unsigned char decrypted[4098]={};
-					printf("B\n");
+
 					int decrypted_length = private_decrypt((unsigned char *) buffer, (int) strlen(buffer),  "private.pem", decrypted);
 					if(decrypted_length == -1)
 					{
 					    printf("Private decryption failed ");
 					    exit(0);
 					}
-					printf("C\n");
+			
 					int encrypted_length= public_encrypt(decrypted,decrypted_length, "public.pem",encrypted); //encrypted contains the re-encrypted message
 					if(encrypted_length == -1)
 					{
 					    printf("Public Encrypt failed ");
 					    exit(0);
 					}
-					printf("D\n");
+	
 					//send(sd, encrypted, strlen(encryped), 0);
 					printf("Received: %s\n", buffer);
 
 					ServResponse(ssl, (char *)encrypted);
-					printf("E\n");
+		
 					//ServResponse(ssl, encrypted);			sends encrypted message
 				}
 			}
 		}
-		
+		printf("E sd: %d\n", sd);
 		sd = SSL_get_fd(ssl);       /* get socket connection */
+		printf("F sd: %d\n", sd);
     	SSL_free(ssl);         /* release SSL state */
     	close(sd);  
 	}
