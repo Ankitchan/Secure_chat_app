@@ -134,7 +134,11 @@ int main(int count, char *strings[])
 	SSL *ssl;
 	char buffer[2048/8];
 	int bytes;
+	char resp1[16], resp2[16];
 	char *hostname, *portnum;
+	unsigned char  encrypted[4098]={};
+	unsigned char decrypted[4098]={};
+	
 	if ( count != 3 )
 	{
 		printf("usage: %s <hostname> <portnum>\n", strings[0]);
@@ -151,14 +155,14 @@ int main(int count, char *strings[])
 		ERR_print_errors_fp(stderr);
 	else
 	{  
-		char resp1[16], resp2[16];
+		
+		
 		printf("Enter message to send(not more than 214 char)\n");
 		fgets(buffer, 256-1, stdin);
-		// start encryption
 
-		unsigned char  encrypted[4098]={};
-		unsigned char decrypted[4098]={};
 		
+		// encrypt the plaintext
+
 		int encrypted_length= public_encrypt(buffer,strlen(buffer),encrypted);
 		if(encrypted_length == -1)
 		{
@@ -166,39 +170,21 @@ int main(int count, char *strings[])
 		    exit(0);
 		}
 
-		printf("plaintext: %s\n", buffer);
-		printf("len of plaintext: %d\n", strlen(buffer));
-		printf("encrypted: %s\n", encrypted);
+		// return the ciphertext
 
-		//int decrypted_length = private_decrypt(encrypted,encrypted_length,decrypted);
-		//if(decrypted_length == -1)
-		//{
-		 //   printLastError("Private Decrypt failed ");
-		  //  exit(0);
-		//}
-		//printf("Immediate decryption: %s\n", decrypted);
-
-		// encryption finished
-		// now we have the ciphertext in encrypted
-
-		printf("Would you like to receive the ciphertext? (Y/N)\n");
+		printf("\n\nWould you like to receive the ciphertext? (Y/N)\n");
 		scanf("%s", resp1);
+		printf("\n\n");
 		if(strcmp(resp1, "Y") == 0 || strcmp(resp1, "y") == 0) {
-			printf("%s\n", encrypted);
-			for(int i = 0; i < 256; ++i) {
-				printf("%d: %c\n", i, *(encrypted + i));
+			for(int i = 0; i < 255; ++i) {
+				printf("%d,", (int) *(encrypted + i));
 			}
+			printf("%d", (int) *(encrypted + 255));
 		}
 
-		int number = (int)strtol(encrypted, NULL, 16);
+		// send the message to server at user's request
 
-		int sum = (int) strtol("Hello", NULL, 16);
-		
-		printf("number: %d\n", number);	
-
-		printf("sum: %d\n", sum);
-
-		printf("Would you like to send message to the server? (Y/N)\n");
+		printf("\n\n\n\nWould you like to send message to the server? (Y/N)\n");
 		scanf("%s", resp2);
 
 		if(strcmp(resp2, "Y") == 0 || strcmp(resp2, "y") == 0) {
@@ -206,28 +192,25 @@ int main(int count, char *strings[])
 			
 			ShowCerts(ssl);
 			SSL_write(ssl, encrypted, 256);
-			printf("Sent %s\n", encrypted);
-		}
-		
-		
-		bytes = SSL_read(ssl, buffer, 256);
-		buffer[bytes] = '\0'; 
 
-		for(int i = 0; i < 256; ++i) {
-				printf("%d: %c\n", i, *(buffer + i));
+			// Receive message from server
+
+			bytes = SSL_read(ssl, buffer, 256);
+			buffer[bytes] = '\0'; 
+
+			printf("%d", (int) *(encrypted + 255));		
+
+
+			int decrypted_length = private_decrypt(buffer,256,decrypted);
+			if(decrypted_length == -1)
+			{
+			    printLastError("Private Decrypt failed ");
+			    exit(0);
 			}
-		
-		printf("Buffer: %s\n", buffer);
-		printf("strlen: %d\n", (int) strlen(buffer));
-		//printf("decrypted: %s\n", decrypted);
-		int decrypted_length = private_decrypt(buffer,256,decrypted);
-		if(decrypted_length == -1)
-		{
-		    printLastError("Private Decrypt failed ");
-		    exit(0);
-		}
 
-		printf("Received from server: %s\n", decrypted);
+			printf("\n\n\n\nReceived from server: \n\n%s\n", decrypted);
+		}
+		
 		SSL_free(ssl);        /* release connection state */
 	}
 	close(server);         /* close socket */

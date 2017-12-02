@@ -166,6 +166,9 @@ void Servlet(SSL* ssl) /* Serve the connection -- threadable */
 {   
 	char buffer[2048/8] = {0};
 	int sd, bytes;
+
+	unsigned char  encrypted[4098]={};
+	unsigned char decrypted[4098]={};
 							 
 	if ( SSL_accept(ssl) == FAIL )     /* do SSL-protocol accept */
 		ERR_print_errors_fp(stderr);
@@ -174,55 +177,51 @@ void Servlet(SSL* ssl) /* Serve the connection -- threadable */
 		ShowCerts(ssl);        /* get any certificates */
 		bytes = SSL_read(ssl, buffer, 256); /* get request */
 		buffer[bytes] = '\0';
-		for(int i = 0; i < 256; ++i) {
-			printf("%d: %c\n", i, *(buffer + i));
+		
+		printf("\n\nCiphertext from the client:\n\n");
+
+		for(int i = 0; i < 255; ++i) {
+			printf("%d,", (int) *(buffer + i));
 		}
-		printf("Client msg: %s\n", buffer);
+
+		printf("%d\n", (int) *(buffer + 255));
 		if ( bytes > 0 )
 		{
-			unsigned char  encrypted[4098]={};
-			unsigned char decrypted[4098]={};
+			
 
 			int decrypted_length = private_decrypt(buffer,256,decrypted);
-			printf("decrypt_len: %d\n", decrypted_length);
 			if(decrypted_length == -1)
 			{
 			    printLastError("Private Decrypt failed ");
 			    exit(0);
 			}
 			
-			printf("Received plaintext from client: %s\n", decrypted);			
-			for(int i = 0; i < 6; ++i) {
-				printf("%d: %c\n", i, *(decrypted + i));
-			}
-
-			printf("Buffer: %s\n", buffer);
-			printf("strlen: %d\n", (int) strlen(buffer));
+			printf("\nReceived plaintext from client: \n\n%s\n", decrypted);			
 			
+
+
 			int encrypted_length= public_encrypt(decrypted,strlen(decrypted),encrypted);
-			printf("Hello Chum");
 			if(encrypted_length == -1)
 			{
 
 			    printLastError("Public Encrypt failed ");
 			    exit(0);
 			}
-			printf("Hello Lumber");
-			for(int i = 0; i < 256; ++i) {
-				printf("%d: %c\n", i, *(encrypted + i));
+			printf("\n\nThe integer representation of the ciphertext that we are sending:\n\n");
+			for(int i = 0; i < 255; ++i) {
+				printf("%d,", (int) *(encrypted + i));
 			}
+			printf("%d\n", (int) *(buffer + 255));			
+
+
 			SSL_write(ssl, encrypted, 256);		// Sends encrypted message to Client
 
-			printf("first decrypted: %s\n", decrypted);
-
 			decrypted_length = private_decrypt(encrypted,256,decrypted);
-			printf("decrypt_len: %d\n", decrypted_length);
 			if(decrypted_length == -1)
 			{
 			    printLastError("Private Decrypt failed ");
 			    exit(0);
 			}
-			printf("second decrypted: %s\n", decrypted);
 		}
 		else
 		{
