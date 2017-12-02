@@ -103,16 +103,16 @@ RSA * createRSAWithFilename(char * filename,int public)
     return rsa;
 }
 
-int public_encrypt(unsigned char * data,int data_len, char * key_file_name, unsigned char *encrypted)
+int public_encrypt(unsigned char * data,int data_len, unsigned char *encrypted)
 {
-    RSA * rsa = createRSAWithFilename(key_file_name,1);
+    RSA * rsa = createRSAWithFilename("public.pem",1);
     int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
     return result;
 }
 
-int private_decrypt(unsigned char * enc_data,int data_len, char * key_file_name, unsigned char *decrypted)
+int private_decrypt(unsigned char * enc_data,int data_len, unsigned char *decrypted)
 {
-    RSA * rsa = createRSAWithFilename(key_file_name,0);
+    RSA * rsa = createRSAWithFilename("private.pem",0);
     int  result = RSA_private_decrypt(data_len,enc_data,decrypted,rsa,padding);
     return result;
 }
@@ -132,8 +132,7 @@ int main(int count, char *strings[])
 	SSL_CTX *ctx;
 	int server;
 	SSL *ssl;
-	char acClientRequest[1024] ={0};
-	unsigned char buffer[4096];
+	char buffer[2048/8];
 	int bytes;
 	char *hostname, *portnum;
 	if ( count != 3 )
@@ -153,20 +152,31 @@ int main(int count, char *strings[])
 	else
 	{  
 		char resp1[16], resp2[16];
-		char msg[1024];
 		printf("Enter message to send(not more than 214 char)\n");
-		scanf("%s",msg);
+		fgets(buffer, 256-1, stdin);
 		// start encryption
 
 		unsigned char  encrypted[4098]={};
 		unsigned char decrypted[4098]={};
 		
-		int encrypted_length= public_encrypt((unsigned char *) msg,strlen(msg),"public.pem",encrypted);
+		int encrypted_length= public_encrypt(buffer,strlen(buffer),encrypted);
 		if(encrypted_length == -1)
 		{
 		    printLastError("Public Encrypt failed ");
 		    exit(0);
 		}
+
+		printf("plaintext: %s\n", buffer);
+		printf("len of plaintext: %d\n", strlen(buffer));
+		printf("encrypted: %s\n", encrypted);
+
+		//int decrypted_length = private_decrypt(encrypted,encrypted_length,decrypted);
+		//if(decrypted_length == -1)
+		//{
+		 //   printLastError("Private Decrypt failed ");
+		  //  exit(0);
+		//}
+		//printf("Immediate decryption: %s\n", decrypted);
 
 		// encryption finished
 		// now we have the ciphertext in encrypted
@@ -175,30 +185,45 @@ int main(int count, char *strings[])
 		scanf("%s", resp1);
 		if(strcmp(resp1, "Y") == 0 || strcmp(resp1, "y") == 0) {
 			printf("%s\n", encrypted);
+			for(int i = 0; i < 256; ++i) {
+				printf("%d: %c\n", i, *(encrypted + i));
+			}
 		}
+
+		int number = (int)strtol(encrypted, NULL, 16);
+
+		int sum = (int) strtol("Hello", NULL, 16);
+		
+		printf("number: %d\n", number);	
+
+		printf("sum: %d\n", sum);
 
 		printf("Would you like to send message to the server? (Y/N)\n");
 		scanf("%s", resp2);
 
 		if(strcmp(resp2, "Y") == 0 || strcmp(resp2, "y") == 0) {
+			
+			
 			ShowCerts(ssl);
-			SSL_write(ssl, encrypted, strlen((char *) encrypted));
+			SSL_write(ssl, encrypted, 256);
 			printf("Sent %s\n", encrypted);
 		}
 		
 		
-		bytes = SSL_read(ssl, buffer, sizeof(buffer));
+		bytes = SSL_read(ssl, buffer, 256);
 		buffer[bytes] = '\0'; 
 
-		printf("Received: %s\n", buffer);
+		for(int i = 0; i < 256; ++i) {
+				printf("%d: %c\n", i, *(buffer + i));
+			}
 		
 		printf("Buffer: %s\n", buffer);
 		printf("strlen: %d\n", (int) strlen(buffer));
-		printf("decrypted: %s\n", decrypted);
-		int decrypted_length = private_decrypt(buffer, (int) strlen(buffer), "private.pem", decrypted);
+		//printf("decrypted: %s\n", decrypted);
+		int decrypted_length = private_decrypt(buffer,256,decrypted);
 		if(decrypted_length == -1)
 		{
-		    printLastError("Private decryption failed ");
+		    printLastError("Private Decrypt failed ");
 		    exit(0);
 		}
 

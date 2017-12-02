@@ -115,56 +115,6 @@ void ShowCerts(SSL* ssl)
 }
 
 
-void Servlet(SSL* ssl) /* Serve the connection -- threadable */
-{   
-	char buffer[1024] = {0};
-	int sd, bytes;
-							 
-	if ( SSL_accept(ssl) == FAIL )     /* do SSL-protocol accept */
-		ERR_print_errors_fp(stderr);
-	else
-	{
-		ShowCerts(ssl);        /* get any certificates */
-		bytes = SSL_read(ssl, buffer, sizeof(buffer)); /* get request */
-		buffer[bytes] = '\0';
-		printf("Client msg: \"%s\"\n", buffer);
-		if ( bytes > 0 )
-		{
-			unsigned char  encrypted[4098]={};
-			unsigned char decrypted[4098]={};
-
-			int decrypted_length = private_decrypt(buffer, (int) strlen(buffer),  "private.pem", decrypted);
-			if(decrypted_length == -1)
-			{
-			    printLastError("Private decryption failed\n");
-			    exit(0);
-			}
-			
-			printf("Received from client: %s\n", decrypted);			
-
-
-			printf("Buffer: %s\n", buffer);
-			printf("strlen: %d\n", (int) strlen(buffer));
-			printf("decrypted: %s\n", decrypted);
-			int encrypted_length= public_encrypt(decrypted,decrypted_length, "public.pem",encrypted); //encrypted contains the re-encrypted message
-			if(encrypted_length == -1)
-			{
-			    printf("Public Encrypt failed\n");
-			    exit(0);
-			}
-
-			SSL_write(ssl, encrypted, strlen(encrypted));
-	
-		}
-		else
-		{
-			ERR_print_errors_fp(stderr);
-		}
-	}
-	sd = SSL_get_fd(ssl);       /* get socket connection */
-	SSL_free(ssl);         /* release SSL state */
-	close(sd);          /* close connection */
-}
 
 RSA * createRSAWithFilename(char * filename,int public)
 {
@@ -189,16 +139,16 @@ RSA * createRSAWithFilename(char * filename,int public)
     return rsa;
 }
 
-int public_encrypt(unsigned char * data,int data_len, char * key_file_name, unsigned char *encrypted)
+int public_encrypt(unsigned char * data,int data_len, unsigned char *encrypted)
 {
-    RSA * rsa = createRSAWithFilename(key_file_name,1);
+    RSA * rsa = createRSAWithFilename("public.pem",1);
     int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
     return result;
 }
 
-int private_decrypt(unsigned char * enc_data,int data_len, char * key_file_name, unsigned char *decrypted)
+int private_decrypt(unsigned char * enc_data,int data_len, unsigned char *decrypted)
 {
-    RSA * rsa = createRSAWithFilename(key_file_name,0);
+    RSA * rsa = createRSAWithFilename("private.pem",0);
     int  result = RSA_private_decrypt(data_len,enc_data,decrypted,rsa,padding);
     return result;
 }
@@ -211,6 +161,79 @@ void printLastError(char *msg)
     printf("%s ERROR: %s\n",msg, err);
     free(err);
 }
+
+void Servlet(SSL* ssl) /* Serve the connection -- threadable */
+{   
+	char buffer[2048/8] = {0};
+	int sd, bytes;
+							 
+	if ( SSL_accept(ssl) == FAIL )     /* do SSL-protocol accept */
+		ERR_print_errors_fp(stderr);
+	else
+	{
+		ShowCerts(ssl);        /* get any certificates */
+		bytes = SSL_read(ssl, buffer, 256); /* get request */
+		buffer[bytes] = '\0';
+		for(int i = 0; i < 256; ++i) {
+			printf("%d: %c\n", i, *(buffer + i));
+		}
+		printf("Client msg: %s\n", buffer);
+		if ( bytes > 0 )
+		{
+			unsigned char  encrypted[4098]={};
+			unsigned char decrypted[4098]={};
+
+			int decrypted_length = private_decrypt(buffer,256,decrypted);
+			printf("decrypt_len: %d\n", decrypted_length);
+			if(decrypted_length == -1)
+			{
+			    printLastError("Private Decrypt failed ");
+			    exit(0);
+			}
+			
+			printf("Received plaintext from client: %s\n", decrypted);			
+			for(int i = 0; i < 6; ++i) {
+				printf("%d: %c\n", i, *(decrypted + i));
+			}
+
+			printf("Buffer: %s\n", buffer);
+			printf("strlen: %d\n", (int) strlen(buffer));
+			
+			int encrypted_length= public_encrypt(decrypted,strlen(decrypted),encrypted);
+			printf("Hello Chum");
+			if(encrypted_length == -1)
+			{
+
+			    printLastError("Public Encrypt failed ");
+			    exit(0);
+			}
+			printf("Hello Lumber");
+			for(int i = 0; i < 256; ++i) {
+				printf("%d: %c\n", i, *(encrypted + i));
+			}
+			SSL_write(ssl, encrypted, 256);		// Sends encrypted message to Client
+
+			printf("first decrypted: %s\n", decrypted);
+
+			decrypted_length = private_decrypt(encrypted,256,decrypted);
+			printf("decrypt_len: %d\n", decrypted_length);
+			if(decrypted_length == -1)
+			{
+			    printLastError("Private Decrypt failed ");
+			    exit(0);
+			}
+			printf("second decrypted: %s\n", decrypted);
+		}
+		else
+		{
+			ERR_print_errors_fp(stderr);
+		}
+	}
+	sd = SSL_get_fd(ssl);       /* get socket connection */
+	SSL_free(ssl);         /* release SSL state */
+	close(sd);          /* close connection */
+}
+
 
 int main(int count, char *Argc[])
 {   
