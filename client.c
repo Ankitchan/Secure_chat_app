@@ -66,12 +66,12 @@ void ShowCerts(SSL* ssl)
 	cert = SSL_get_peer_certificate(ssl); /* get the server's certificate */
 	if ( cert != NULL )
 	{
-		printf("Server certificates:\n");
+		//printf("Server certificates:\n");
 		line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-		printf("Subject: %s\n", line);
+		//printf("Subject: %s\n", line);
 		free(line);       /* free the malloc'ed string */
 		line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-		printf("Issuer: %s\n", line);
+		//printf("Issuer: %s\n", line);
 		free(line);       /* free the malloc'ed string */
 		X509_free(cert);     /* free the malloc'ed certificate copy */
 	}
@@ -157,10 +157,15 @@ int main(int count, char *strings[])
 	{  
 		
 		
-		printf("Enter message to send(not more than 214 char)\n");
+		printf("Enter message to send(not more than 244 char)\n");
 		fgets(buffer, 256-1, stdin);
 
-		
+		if(strlen(buffer) > 245)
+		{
+			printf("Input too large\n");
+			exit(0);
+		}
+		//printf("%d",(int)strlen(buffer));
 		// encrypt the plaintext
 
 		int encrypted_length= public_encrypt(buffer,strlen(buffer),encrypted);
@@ -198,7 +203,7 @@ int main(int count, char *strings[])
 			bytes = SSL_read(ssl, buffer, 256);
 			buffer[bytes] = '\0'; 
 
-			printf("%d", (int) *(encrypted + 255));		
+			//printf("%d", (int) *(encrypted + 255));		
 
 
 			int decrypted_length = private_decrypt(buffer,256,decrypted);

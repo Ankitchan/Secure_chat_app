@@ -101,17 +101,17 @@ void ShowCerts(SSL* ssl)
 	cert = SSL_get_peer_certificate(ssl); /* Get certificates (if available) */
 	if ( cert != NULL )
 	{
-		printf("Server certificates:\n");
+		//printf("Server certificates:\n");
 		line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-		printf("Subject: %s\n", line);
+		//printf("Subject: %s\n", line);
 		free(line);
 		line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-		printf("Issuer: %s\n", line);
+		//printf("Issuer: %s\n", line);
 		free(line);
 		X509_free(cert);
 	}
 	else
-		printf("No certificates.\n");
+		printf("No client certificate.\n");
 }
 
 
