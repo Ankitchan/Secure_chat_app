@@ -105,14 +105,14 @@ RSA * createRSAWithFilename(char * filename,int public)
 
 int public_encrypt(unsigned char * data,int data_len, unsigned char *encrypted)
 {
-    RSA * rsa = createRSAWithFilename("public.pem",1);
+    RSA * rsa = createRSAWithFilename("client_public.pem",1);
     int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
     return result;
 }
 
 int private_decrypt(unsigned char * enc_data,int data_len, unsigned char *decrypted)
 {
-    RSA * rsa = createRSAWithFilename("private.pem",0);
+    RSA * rsa = createRSAWithFilename("client_private.pem",0);
     int  result = RSA_private_decrypt(data_len,enc_data,decrypted,rsa,padding);
     return result;
 }
