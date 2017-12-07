@@ -27,6 +27,7 @@ gcc client.c -o client -L /usr/lib -lssl -lcrypto
 ./client 127.0.0.1 port num
 
 Note: 
-1. Ignore any warnings generated
-2. Port number should be same for both and client
-3. While running client, if the server is on other ip address then the localhost is replaced with the ipaddress of server 
+1. OpenSSL should be installed in your local machine
+2. Ignore any warnings generated
+3. Port number should be same for both and client
+4. While running client, if the server is on other ip address then the localhost is replaced with the ipaddress of server 
