@@ -18,13 +18,13 @@ openssl rsa -pubout -in server_private.pem  -out server_public.pem
 
 gcc server.c -o server -L /usr/lib -lssl -lcrypto
 
-sudo ./server <port num>
+sudo ./server port num
 
 5. Compile and runthe client side
 
 gcc client.c -o client -L /usr/lib -lssl -lcrypto
 
-./client 127.0.0.1 <port num>
+./client 127.0.0.1 port num
 
 Note: 
 1. Ignore any warnings generated
