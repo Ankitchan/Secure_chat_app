@@ -179,7 +179,7 @@ void Servlet(SSL* ssl) /* Serve the connection -- threadable */
 		buffer[bytes] = '\0';
 		
 		printf("\n\nCiphertext from the client:\n\n");
-
+		printf("%s",buffer);
 		for(int i = 0; i < 255; ++i) {
 			printf("%d,", (int) *(buffer + i));
 		}
@@ -216,12 +216,12 @@ void Servlet(SSL* ssl) /* Serve the connection -- threadable */
 
 			SSL_write(ssl, encrypted, 256);		// Sends encrypted message to Client
 
-			decrypted_length = private_decrypt(encrypted,256,decrypted);
+			/*decrypted_length = private_decrypt(encrypted,256,decrypted);
 			if(decrypted_length == -1)
 			{
 			    printLastError("Private Decrypt failed ");
 			    exit(0);
-			}
+			}*/
 		}
 		else
 		{

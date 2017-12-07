@@ -105,7 +105,7 @@ RSA * createRSAWithFilename(char * filename,int public)
 
 int public_encrypt(unsigned char * data,int data_len, unsigned char *encrypted)
 {
-    RSA * rsa = createRSAWithFilename("client_public.pem",1);
+    RSA * rsa = createRSAWithFilename("server_public.pem",1);
     int result = RSA_public_encrypt(data_len,data,encrypted,rsa,padding);
     return result;
 }
@@ -180,6 +180,7 @@ int main(int count, char *strings[])
 		printf("\n\nWould you like to receive the ciphertext? (Y/N)\n");
 		scanf("%s", resp1);
 		printf("\n\n");
+		printf("%s", encrypted);
 		if(strcmp(resp1, "Y") == 0 || strcmp(resp1, "y") == 0) {
 			for(int i = 0; i < 255; ++i) {
 				printf("%d,", (int) *(encrypted + i));
